@@ -101,9 +101,9 @@ class listDataset(Dataset):
         label = label.lower()
 
         # ignore too long texts in training stage
-        if len(label) >= 25 and self.inTrain:
+        # if len(label) >= 25 and self.inTrain:
             # print('Too long text: {}, use next one.'.format(imgpath))
-            return self[index + 1]
+            # return self[index + 1]
 
         # -- data preprocess
         if self.inTrain:

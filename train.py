@@ -23,7 +23,7 @@ class Trainer(object):
 
         with open(self.configs.alphabet) as f:
             alphabet = f.readline().strip()
-        self.converter = strLabelConverter(alphabet)
+        self.converter = strLabelConverter(alphabet, configs.net.max_len)
 
         self.savedir = os.path.join(self.configs.savedir, time.strftime('%Y%m%d-%H:%M:%S', time.localtime()))
         os.makedirs(self.savedir)
@@ -57,19 +57,26 @@ class Trainer(object):
                     'optimizer': self.optimizer._optimizer.state_dict(),
                     'model_config': self.configs.net},
                     savename)
-        self.log('-'*50 + '\n[Info] Model saved as {}\n'.format(savename) + '-'*50)
+        self.log('-'*self.configs['net']['max_len'] + '\n[Info] Model saved as {}\n'.format(savename) + '-'*self.configs['net']['max_len'])
+
+
+    def save_best_model(self, epoch, loss):
+        if not hasattr(self, 'best_loss') or loss < self.best_loss:
+            self.best_loss = loss
+            savename = os.path.join(self.savedir, 'best_model.pth')
+            self.savemodel(savename)
+            self.log('Best model saved at epoch {} with loss {:.3f}'.format(epoch + 1, loss))
 
 
     def train(self):
 
         for epoch in range(self.configs.n_epochs):
-            self.log('=' * 25 + 'Training Epoch {} Start'.format(epoch + 1) + '=' * 25)
+            self.log('=' * self.configs['net']['max_len'] + 'Training Epoch {} Start'.format(epoch + 1) + '=' * self.configs['net']['max_len'])
             loss = self.train_epoch(epoch)
             self.log('Epoch [{}/{}]  train loss = {:.3f}'
                      .format(epoch + 1, self.configs.n_epochs, loss))
 
-            savename = os.path.join(self.savedir, 'm_epoch{}.pth'.format(epoch + 1))
-            self.savemodel(savename)
+            self.save_best_model(epoch, loss)
 
 
     def train_epoch(self, epoch):
@@ -83,10 +90,10 @@ class Trainer(object):
         progress = ProgressBar(widgets=widgets, maxval=10 * len(self.trainloader)).start()
 
         for step, (ims, texts, *_) in enumerate(self.trainloader):
-
             # prepare data
             ims = ims.to(self.device)  # [B, 3, 64, 256]
             targets = self.converter.encode(texts).to(self.device)  # [B, L]
+
 
             # forward
             self.optimizer.zero_grad()
